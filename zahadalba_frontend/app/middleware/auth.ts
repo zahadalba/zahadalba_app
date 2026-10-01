@@ -1,25 +1,23 @@
-import { FetchError } from "ofetch";
+import type { GetMeResponseDto } from "~/types/auth.type";
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
+  const headers = useRequestHeaders(["cookie"]);
   const authStore = useAuthStore();
 
-  const headers = useRequestHeaders(["cookie"]);
-  console.log("middleware");
-
   try {
-    const data = await $fetch<{ id: string; email: string }>("/api/auth/me", {
+    const data = await $fetch<GetMeResponseDto>("/api/auth/me", {
       method: "GET",
       headers,
     });
 
-    if (data?.email) {
-      authStore.user = data;
-      authStore.isAuthenticated = true;
-    }
+    authStore.user = data;
+    authStore.isAuthenticated = true;
   } catch {
     authStore.user = null;
     authStore.isAuthenticated = false;
   }
 
-  if (!authStore.isAuthenticated) return navigateTo("/auth/sign-in");
+  if (!authStore.isAuthenticated) {
+    return navigateTo("/auth/sign-in");
+  }
 });

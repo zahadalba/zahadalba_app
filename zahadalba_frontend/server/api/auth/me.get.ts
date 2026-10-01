@@ -4,12 +4,9 @@ export default defineEventHandler(async (event) => {
   let accessToken = getCookie(event, "accessToken");
   let refreshToken = getCookie(event, "refreshToken");
 
-  // Флаг для локального dev-окружения (без HTTPS куки с secure: true браузер отклоняет)
-
-  // 1. Если Access Token отсутствует, но есть Refresh Token — сразу пробуем обновить
   if (!accessToken && refreshToken) {
     try {
-      const refreshData = await $fetch<{
+      const data = await $fetch<{
         accessToken: string;
         refreshToken: string;
       }>("http://localhost:7203/api/auth/refresh", {
@@ -19,21 +16,19 @@ export default defineEventHandler(async (event) => {
         },
       });
 
-      accessToken = refreshData.accessToken;
-      refreshToken = refreshData.refreshToken;
+      accessToken = data.accessToken;
+      refreshToken = data.refreshToken;
 
-      // Проставляем обновлённый Access Token в куки текущего запроса Nitro
       setCookie(event, "accessToken", accessToken, {
         httpOnly: true,
-        sameSite: "strict",
         secure: true,
-        maxAge: 2 * 60,
+        sameSite: "strict",
+        maxAge: 15 * 60,
       });
-
       setCookie(event, "refreshToken", refreshToken, {
         httpOnly: true,
-        sameSite: "strict",
         secure: true,
+        sameSite: "strict",
         maxAge: 30 * 24 * 60 * 60,
       });
     } catch {
@@ -54,28 +49,26 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // 2. Делаем запрос к ASP.NET Core бэкенду
   try {
-    const data = await $fetch<{ id: string; email: string }>(
-      "http://localhost:7203/api/auth/me",
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+    const data = await $fetch<{
+      id: string;
+      email: string;
+    }>("http://localhost:7203/api/auth/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
       },
-    );
+    });
 
-    return { id: data.id, email: data.email };
+    return data;
   } catch (error) {
-    // Если бэкенд вернул 401 (например, Access Token истёк прямо во время запроса)
     if (
       error instanceof FetchError &&
       error.statusCode === 401 &&
       refreshToken
     ) {
       try {
-        const refreshData = await $fetch<{
+        const data = await $fetch<{
           accessToken: string;
           refreshToken: string;
         }>("http://localhost:7203/api/auth/refresh", {
@@ -85,35 +78,33 @@ export default defineEventHandler(async (event) => {
           },
         });
 
-        accessToken = refreshData.accessToken;
-        refreshToken = refreshData.refreshToken;
+        accessToken = data.accessToken;
+        refreshToken = data.refreshToken;
 
         setCookie(event, "accessToken", accessToken, {
           httpOnly: true,
-          sameSite: "strict",
           secure: true,
-          maxAge: 2 * 60,
+          sameSite: "strict",
+          maxAge: 15 * 60,
         });
-
         setCookie(event, "refreshToken", refreshToken, {
           httpOnly: true,
-          sameSite: "strict",
           secure: true,
+          sameSite: "strict",
           maxAge: 30 * 24 * 60 * 60,
         });
 
-        // Повторяем запрос к бэкенду с новым токеном
-        const retryData = await $fetch<{ id: string; email: string }>(
-          "http://localhost:7203/api/auth/me",
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
+        const retryData = await $fetch<{
+          id: string;
+          email: string;
+        }>("http://localhost:7203/api/auth/me", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
           },
-        );
+        });
 
-        return { id: retryData.id, email: retryData.email };
+        return retryData;
       } catch {
         deleteCookie(event, "accessToken");
         deleteCookie(event, "refreshToken");
@@ -124,7 +115,6 @@ export default defineEventHandler(async (event) => {
         });
       }
     }
-
     throw createError({
       statusCode: 401,
       statusMessage: "Unauthorized",

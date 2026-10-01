@@ -1,19 +1,17 @@
+import type { GetMeResponseDto } from "~/types/auth.type";
+
 export default defineNuxtPlugin(async () => {
-  const authStore = useAuthStore();
   const headers = useRequestHeaders(["cookie"]);
-  console.log("plugin");
+  const authStore = useAuthStore();
 
   try {
-    const data = await $fetch<{ id: string; email: string }>("/api/auth/me", {
+    const data = await $fetch<GetMeResponseDto>("/api/auth/me", {
       method: "GET",
       headers,
     });
 
-    if (data?.email) {
-      authStore.user = data;
-      authStore.isAuthenticated = true;
-    }
-    return;
+    authStore.user = data;
+    authStore.isAuthenticated = true;
   } catch {
     authStore.user = null;
     authStore.isAuthenticated = false;

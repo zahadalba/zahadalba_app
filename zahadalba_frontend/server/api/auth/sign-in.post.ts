@@ -2,7 +2,6 @@ import { FetchError } from "ofetch";
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
-
   try {
     const data = await $fetch<{
       id: string;
@@ -18,7 +17,7 @@ export default defineEventHandler(async (event) => {
       httpOnly: true,
       secure: true,
       sameSite: "strict",
-      maxAge: 2 * 60,
+      maxAge: 15 * 60,
     });
     setCookie(event, "refreshToken", data.refreshToken, {
       httpOnly: true,
@@ -27,7 +26,10 @@ export default defineEventHandler(async (event) => {
       maxAge: 30 * 24 * 60 * 60,
     });
 
-    return { id: data.id, email: data.email };
+    return {
+      id: data.id,
+      email: data.email,
+    };
   } catch (error) {
     if (error instanceof FetchError) {
       throw createError({

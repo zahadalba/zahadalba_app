@@ -7,8 +7,10 @@ const authStore = useAuthStore();
 
 const logout = async () => {
     try {
+        const headers = useRequestHeaders(["cookie"]);
         await $fetch("/api/auth/sign-out", {
             method: "POST",
+            headers,
         });
     } finally {
         authStore.user = null;

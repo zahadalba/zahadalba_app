@@ -1,7 +1,9 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 using zahadalba_backend.Configurations;
 using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
@@ -39,6 +41,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("signInLimit", httpContext =>
+    {
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString(),
+            factory: _ =>
+            {
+                return new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 5,
+                };
+            });
+    });
+});
+
+builder.Services.AddValidatorsFromAssemblyContaining<SignUpRequestDtoValidator>();
+
 builder.Services.AddSingleton<AppDbContext>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IDateTimeService, DateTimeService>();
@@ -50,15 +74,19 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var store = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (!store.Users.Any(u => u.Email == "1"))
+    if (!store.Users.Any(u => u.Email == "admin@a.aa"))
     {
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<ISha256HasherService>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
 
         User testUser = new User()
         {
-            Email = "1",
-            PasswordHash = passwordHasher.GetHash("1")
+            FirstName = "Admin",
+            LastName = "Admin",
+            Age = 33,
+            Email = "admin@a.aa",
+            Phone = "88888888888"
         };
+        testUser.PasswordHash = passwordHasher.HashPassword(testUser, "a");
 
         store.Users.Add(testUser);
     }
@@ -66,6 +94,8 @@ using (var scope = app.Services.CreateScope())
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapSignUpEndpoint();
 app.MapSignInEndpoint();

@@ -17,16 +17,30 @@ namespace zahadalba_backend.Features.Auth.GetMe
             var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null)
             {
-                return Results.Problem(statusCode: 401, title: "Unauthorized");
+                return Results.Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Не авторизован",
+                    detail: "Не удалось получить ID пользователя");
             }
 
             var user = dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
             if (user is null)
             {
-                return Results.Problem(statusCode: 401, title: "Unauthorized");
+                return Results.Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Не авторизован",
+                    detail: "Пользователь не найден");
             }
 
-            return Results.Ok(new { Id = user.Id.ToString(), user.Email });
+            return Results.Ok(new
+            {
+                Id = user.Id.ToString(),
+                user.FirstName,
+                user.LastName,
+                user.Age,
+                user.Email,
+                user.Phone,
+            });
         }
     }
 }

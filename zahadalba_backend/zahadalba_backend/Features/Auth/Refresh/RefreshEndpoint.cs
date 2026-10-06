@@ -21,13 +21,13 @@ namespace zahadalba_backend.Features.Auth.Refresh
             var refreshTokenData = context.Request.Cookies["refreshToken"];
             if (string.IsNullOrEmpty(refreshTokenData))
             {
-                return Results.Problem(statusCode: 401, title: "Unauthorized");
+                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
             }
 
             var existingRefreshToken = dbContext.RefreshTokens.FirstOrDefault(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
             if (existingRefreshToken is null || existingRefreshToken.ExpiresAt <= dateTimeService.UtcNow || existingRefreshToken.AbsoluteExpiresAt <= dateTimeService.UtcNow)
             {
-                return Results.Problem(statusCode: 401, title: "Unauthorized");
+                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
             }
 
             if (existingRefreshToken.IsRevoked)
@@ -38,7 +38,7 @@ namespace zahadalba_backend.Features.Auth.Refresh
                     var retryUser = dbContext.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
                     if (retryUser is null)
                     {
-                        return Results.Problem(statusCode: 401, title: "Unauthorized");
+                        return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
                     }
 
                     var retryAccessToken = tokenService.GenerateAccessToken(retryUser, dateTimeService);
@@ -64,13 +64,13 @@ namespace zahadalba_backend.Features.Auth.Refresh
                     t.RevokedAt = dateTimeService.UtcNow;
                 }
 
-                return Results.Problem(statusCode: 401, title: "Unauthorized: token reuse detected!");
+                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized: token reuse detected!");
             }
 
             var user = dbContext.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
             if (user is null)
             {
-                return Results.Problem(statusCode: 401, title: "Unauthorized");
+                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
             }
 
             var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
@@ -92,9 +92,10 @@ namespace zahadalba_backend.Features.Auth.Refresh
             existingRefreshToken.IsRevoked = true;
             existingRefreshToken.RevokedAt = dateTimeService.UtcNow;
 
+            Console.WriteLine("-------------------------");
             foreach (var t in dbContext.RefreshTokens)
             {
-                Console.WriteLine($"{t.CreatedAt} | {t.RevokedAt}");
+                Console.WriteLine($"TokenHash: {t.TokenHash} | CreatedAt: {t.CreatedAt} | RevokedAt: {t.RevokedAt}");
             }
 
             return Results.Ok(new

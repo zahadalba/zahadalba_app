@@ -1,6 +1,8 @@
-﻿using zahadalba_backend.Data;
+﻿using FluentValidation;
+using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
 using zahadalba_backend.Services;
+using Microsoft.AspNetCore.Identity;
 
 namespace zahadalba_backend.Features.Auth.SignIn
 {
@@ -8,20 +10,59 @@ namespace zahadalba_backend.Features.Auth.SignIn
     {
         public static void MapSignInEndpoint(this IEndpointRouteBuilder app)
         {
-            app.MapPost("/api/auth/sign-in", Handle);
+            app.MapPost("/api/auth/sign-in", Handle).RequireRateLimiting("signInLimit");
         }
 
-        private static IResult Handle(
+        private static async Task<IResult> Handle(
             SignInRequestDto dto,
             IDateTimeService dateTimeService,
             AppDbContext dbContext,
             ITokenService tokenService,
-            ISha256HasherService sha256HasherService)
+            ISha256HasherService sha256HasherService,
+            IPasswordHasher<User> passwordHasher,
+            IValidator<SignInRequestDto> validator)
         {
-            var user = dbContext.Users.FirstOrDefault(u => u.Email == dto.Email && u.PasswordHash == sha256HasherService.GetHash(dto.Password));
+            var normalizedDto = dto with
+            {
+                Email = dto.Email.Trim(),
+            };
+
+            var validationResult = await validator.ValidateAsync(normalizedDto);
+            if (!validationResult.IsValid)
+            {
+                var errors = validationResult.Errors
+                    .GroupBy(x => x.PropertyName)
+                    .ToDictionary(
+                    x => x.Key,
+                    x => x.Select(x => x.ErrorMessage).ToArray());
+                return Results.ValidationProblem(
+                    errors: errors,
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Ошибка авторизации",
+                    detail: "Отправлены некорректные данные");
+            }
+
+            var user = dbContext.Users.FirstOrDefault(u => u.Email == normalizedDto.Email);
             if (user is null)
             {
-                return Results.Problem(statusCode: 409, detail: "Неверный email или пароль");
+                return Results.Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Ошибка авторизации",
+                    detail: "Пользователь не найден");
+            }
+
+            var verificationResult = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, normalizedDto.Password);
+            if (verificationResult == PasswordVerificationResult.Failed)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status409Conflict, 
+                    title: "Ошибка авторизации",
+                    detail: "Неверный email или пароль");
+            }
+
+            if (verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                user.PasswordHash = passwordHasher.HashPassword(user, normalizedDto.Password);
             }
 
             var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
@@ -37,7 +78,11 @@ namespace zahadalba_backend.Features.Auth.SignIn
             return Results.Ok(new
             {
                 Id = user.Id.ToString(),
+                user.FirstName,
+                user.LastName,
+                user.Age,
                 user.Email,
+                user.Phone,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
             });

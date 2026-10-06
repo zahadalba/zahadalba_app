@@ -5,7 +5,11 @@ export default defineEventHandler(async (event) => {
   try {
     const data = await $fetch<{
       id: string;
+      firstName: string;
+      lastName: string;
+      age: number;
       email: string;
+      phone: string;
       accessToken: string;
       refreshToken: string;
     }>("http://localhost:7203/api/auth/sign-in", {
@@ -34,7 +38,9 @@ export default defineEventHandler(async (event) => {
     if (error instanceof FetchError) {
       throw createError({
         statusCode: error.statusCode,
+        statusMessage: error.data.title,
         message: error.data.detail,
+        data: error.data,
       });
     }
   }

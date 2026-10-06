@@ -7,10 +7,10 @@ export default defineEventHandler(async (event) => {
         cookie: `refreshToken=${refreshToken}`,
       },
     });
-  } catch {}
+  } finally {
+    deleteCookie(event, "accessToken");
+    deleteCookie(event, "refreshToken");
 
-  deleteCookie(event, "accessToken");
-  deleteCookie(event, "refreshToken");
-
-  return;
+    return;
+  }
 });

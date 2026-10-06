@@ -11,9 +11,12 @@
   },
   "dependencies": {
     "@pinia/nuxt": "^1.0.2",
+    "@regle/core": "^1.29.4",
+    "@regle/schemas": "^1.29.4",
     "nuxt": "^4.5.2",
     "pinia": "^4.0.3",
     "vue": "^3.5.43",
-    "vue-router": "^5.3.1"
+    "vue-router": "^5.3.1",
+    "zod": "^4.6.5"
   }
 }

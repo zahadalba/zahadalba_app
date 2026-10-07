@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRegleSchema } from '@regle/schemas';
 import { FetchError } from "ofetch";
+import { useAuth } from '~/services/auth.service';
 import type { ApiError } from '~/types/apiError.type';
 
 const state = reactive<SignUpFormInput>({
@@ -32,6 +33,21 @@ const passwordChecks = computed(() => {
     };
 });
 
+const { signUp } = useAuth();
+const { mutate, isLoading } = useMutation({
+    mutation: signUp,
+
+    onSuccess: async () => {
+        await navigateTo("/");
+    },
+
+    onError: (error: FetchError) => {
+        apiError.value.statusCode = error.statusCode;
+        apiError.value.statusMessage = error.data.statusMessage;
+        apiError.value.message = error.data.message;
+    }
+});
+
 const onSubmit = async () => {
     const validationResult = await r$.$validate();
 
@@ -39,20 +55,7 @@ const onSubmit = async () => {
         return;
     }
 
-    try {
-        await $fetch("/api/auth/sign-up", {
-            method: "POST",
-            body: r$.$value,
-        });
-
-        return navigateTo("/");
-    } catch (error) {
-        if (error instanceof FetchError) {
-            apiError.value.statusCode = error.statusCode;
-            apiError.value.statusMessage = error.data.statusMessage;
-            apiError.value.message = error.data.message;
-        }
-    }
+    mutate(r$.$value)
 };
 </script>
 
@@ -101,7 +104,7 @@ const onSubmit = async () => {
             <input v-model="state.confirmPassword" type="password" placeholder="Подтверждение пароля">
             <span v-if="r$.confirmPassword.$error">{{ r$.confirmPassword.$errors }}</span>
         </div>
-        <button type="submit">Регистрация</button>
+        <button type="submit" :disabled="isLoading">Регистрация</button>
     </form>
     <p>{{ apiError.statusCode }} {{ apiError.statusMessage }}</p>
 </template>

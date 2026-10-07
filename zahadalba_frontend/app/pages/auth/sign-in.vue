@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useRegleSchema } from '@regle/schemas';
-import type { SignInResponseDto } from '~/types/auth.type';
 import { FetchError } from "ofetch";
 import type { ApiError } from '~/types/apiError.type';
+import { useAuth } from '~/services/auth.service';
 
 definePageMeta({
     layout: "auth"
@@ -23,29 +23,31 @@ const apiError = ref<ApiError>({
 
 const { r$ } = useRegleSchema(state, signInSchema)
 
+const { signIn } = useAuth();
+const { mutate, isLoading } = useMutation({
+    mutation: signIn,
+
+    onSuccess: async (data) => {
+        authStore.user = data;
+        authStore.isAuthenticated = true;
+
+        await navigateTo("/");
+    },
+
+    onError: (error: FetchError) => {
+        apiError.value.statusCode = error.statusCode;
+        apiError.value.statusMessage = error.data.statusMessage;
+        apiError.value.message = error.data.message;
+    }
+});
+
 const onSubmit = async () => {
     const validationResult = await r$.$validate();
     if (!validationResult.valid) {
         return;
     }
 
-    try {
-        const data = await $fetch<SignInResponseDto>("/api/auth/sign-in", {
-            method: 'POST',
-            body: r$.$value,
-        });
-
-        authStore.user = data;
-        authStore.isAuthenticated = true;
-
-        return navigateTo("/");
-    } catch (error) {
-        if (error instanceof FetchError) {
-            apiError.value.statusCode = error.statusCode;
-            apiError.value.statusMessage = error.data.statusMessage;
-            apiError.value.message = error.data.message;
-        }
-    }
+    mutate(r$.$value)
 }
 </script>
 
@@ -64,7 +66,7 @@ const onSubmit = async () => {
             <span v-if="r$.password.$error">{{ r$.password.$errors[0] }}</span>
         </div>
 
-        <button type="submit">Войти</button>
+        <button type="submit" :disabled="isLoading">Войти</button>
     </form>
-    <p>{{ apiError.statusCode }} {{ apiError.message }}</p>
+    <p>{{ apiError.statusCode }} {{ apiError.message }} {{ apiError.statusMessage }}</p>
 </template>

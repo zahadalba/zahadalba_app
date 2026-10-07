@@ -10,6 +10,8 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@pinia/colada": "^1.4.7",
+    "@pinia/colada-nuxt": "^1.2.0",
     "@pinia/nuxt": "^1.0.2",
     "@regle/core": "^1.29.4",
     "@regle/schemas": "^1.29.4",

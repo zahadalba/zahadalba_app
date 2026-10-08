@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -23,6 +24,12 @@ if (jwtSettings is null)
 {
     throw new InvalidOperationException("JwtSettings section is missing in configuration");
 }
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(connectionString);
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -63,7 +70,6 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddValidatorsFromAssemblyContaining<SignUpRequestDtoValidator>();
 
-builder.Services.AddSingleton<AppDbContext>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<IDateTimeService, DateTimeService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -73,8 +79,8 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var store = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (!store.Users.Any(u => u.Email == "admin@a.aa"))
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (!db.Users.Any(u => u.Email == "admin@a.aa"))
     {
         var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
 
@@ -88,7 +94,8 @@ using (var scope = app.Services.CreateScope())
         };
         testUser.PasswordHash = passwordHasher.HashPassword(testUser, "a");
 
-        store.Users.Add(testUser);
+        db.Users.Add(testUser);
+        await db.SaveChangesAsync();
     }
 }
 

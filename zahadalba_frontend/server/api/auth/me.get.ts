@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
   if (!accessToken && refreshToken) {
     try {
       const data = await $fetch<{
+        status: string;
         accessToken: string;
         refreshToken: string;
       }>("http://localhost:7203/api/auth/refresh", {
@@ -87,6 +88,7 @@ export default defineEventHandler(async (event) => {
     ) {
       try {
         const data = await $fetch<{
+          status: string;
           accessToken: string;
           refreshToken: string;
         }>("http://localhost:7203/api/auth/refresh", {

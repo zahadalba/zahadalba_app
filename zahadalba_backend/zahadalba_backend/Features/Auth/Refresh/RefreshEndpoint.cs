@@ -1,4 +1,5 @@
-﻿using zahadalba_backend.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
 using zahadalba_backend.Services;
 
@@ -11,10 +12,10 @@ namespace zahadalba_backend.Features.Auth.Refresh
             app.MapPost("/api/auth/refresh", Handler);
         }
 
-        private static IResult Handler(
+        private static async Task<IResult> Handler(
             HttpContext context,
             IDateTimeService dateTimeService,
-            AppDbContext dbContext,
+            AppDbContext db,
             ISha256HasherService sha256HasherService,
             ITokenService tokenService)
         {
@@ -24,86 +25,111 @@ namespace zahadalba_backend.Features.Auth.Refresh
                 return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
             }
 
-            var existingRefreshToken = dbContext.RefreshTokens.FirstOrDefault(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
-            if (existingRefreshToken is null || existingRefreshToken.ExpiresAt <= dateTimeService.UtcNow || existingRefreshToken.AbsoluteExpiresAt <= dateTimeService.UtcNow)
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            try
             {
-                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
-            }
-
-            if (existingRefreshToken.IsRevoked)
-            {
-                var timeSinceRevocation = dateTimeService.UtcNow - existingRefreshToken.RevokedAt;
-                if (timeSinceRevocation is not null && timeSinceRevocation.Value.TotalSeconds <= 10)
+                var existingRefreshToken = await db.RefreshTokens
+                    .FromSqlInterpolated($"""
+                        SELECT *
+                        FROM "RefreshTokens"
+                        WHERE "TokenHash" = {sha256HasherService.GetHash(refreshTokenData)}
+                        FOR UPDATE
+                        """)
+                    .SingleOrDefaultAsync();
+                if (existingRefreshToken is null || existingRefreshToken.ExpiresAt <= dateTimeService.UtcNow || existingRefreshToken.AbsoluteExpiresAt <= dateTimeService.UtcNow)
                 {
-                    var retryUser = dbContext.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
-                    if (retryUser is null)
+                    return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
+                }
+
+                if (existingRefreshToken.IsRevoked)
+                {
+                    var timeSinceRevocation = dateTimeService.UtcNow - existingRefreshToken.RevokedAt;
+                    if (timeSinceRevocation is not null && timeSinceRevocation.Value.TotalSeconds <= 10)
                     {
-                        return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
+                        var retryUser = db.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+                        if (retryUser is null)
+                        {
+                            return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
+                        }
+
+                        var retryAccessToken = tokenService.GenerateAccessToken(retryUser, dateTimeService);
+                        var retryRefreshToken = tokenService.GenerateRefreshToken();
+
+                        db.RefreshTokens.Add(new RefreshToken(
+                            userId: retryUser.Id,
+                            tokenHash: sha256HasherService.GetHash(retryRefreshToken),
+                            createdAt: dateTimeService.UtcNow,
+                            expiresAt: existingRefreshToken.ExpiresAt,
+                            absoluteExpiresAt: existingRefreshToken.AbsoluteExpiresAt));
+
+                        await db.SaveChangesAsync();
+                        await transaction.CommitAsync();
+
+                        return Results.Ok(new
+                        {
+                            AccessToken = retryAccessToken,
+                            RefreshToken = retryRefreshToken
+                        });
                     }
 
-                    var retryAccessToken = tokenService.GenerateAccessToken(retryUser, dateTimeService);
-                    var retryRefreshToken = tokenService.GenerateRefreshToken();
-
-                    dbContext.RefreshTokens.Add(new RefreshToken(
-                        userId: retryUser.Id,
-                        tokenHash: sha256HasherService.GetHash(retryRefreshToken),
-                        createdAt: dateTimeService.UtcNow,
-                        expiresAt: existingRefreshToken.ExpiresAt,
-                        absoluteExpiresAt: existingRefreshToken.AbsoluteExpiresAt));
-
-                    return Results.Ok(new
+                    foreach (var t in db.RefreshTokens.Where(t => t.UserId == existingRefreshToken.UserId))
                     {
-                        AccessToken = retryAccessToken,
-                        RefreshToken = retryRefreshToken
-                    });
+                        t.IsRevoked = true;
+                        t.RevokedAt = dateTimeService.UtcNow;
+                    }
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized: token reuse detected!");
                 }
 
-                foreach (var t in dbContext.RefreshTokens.Where(t => t.UserId == existingRefreshToken.UserId))
+                var user = db.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+                if (user is null)
                 {
-                    t.IsRevoked = true;
-                    t.RevokedAt = dateTimeService.UtcNow;
+                    return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
                 }
 
-                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized: token reuse detected!");
+                var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
+                var refreshToken = tokenService.GenerateRefreshToken();
+
+                var newExpiresAt = dateTimeService.UtcNow.AddDays(7);
+                if (newExpiresAt > existingRefreshToken.AbsoluteExpiresAt)
+                {
+                    newExpiresAt = existingRefreshToken.AbsoluteExpiresAt;
+                }
+
+                db.RefreshTokens.Add(new RefreshToken(
+                    userId: user.Id,
+                    tokenHash: sha256HasherService.GetHash(refreshToken),
+                    createdAt: dateTimeService.UtcNow,
+                    expiresAt: newExpiresAt,
+                    absoluteExpiresAt: existingRefreshToken.AbsoluteExpiresAt));
+
+                existingRefreshToken.IsRevoked = true;
+                existingRefreshToken.RevokedAt = dateTimeService.UtcNow;
+
+                await db.SaveChangesAsync();
+
+                Console.WriteLine("-------------------------");
+                foreach (var t in db.RefreshTokens)
+                {
+                    Console.WriteLine($"TokenHash: {t.TokenHash} | CreatedAt: {t.CreatedAt} | RevokedAt: {t.RevokedAt}");
+                }
+
+                await transaction.CommitAsync();
+
+                return Results.Ok(new
+                {
+                    AccessToken = accessToken,
+                    RefreshToken = refreshToken
+                });
             }
-
-            var user = dbContext.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
-            if (user is null)
+            catch (Exception ex)
             {
-                return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
+                await transaction.RollbackAsync();
+                return Results.Problem();
             }
-
-            var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
-            var refreshToken = tokenService.GenerateRefreshToken();
-
-            var newExpiresAt = dateTimeService.UtcNow.AddDays(7);
-            if (newExpiresAt > existingRefreshToken.AbsoluteExpiresAt)
-            {
-                newExpiresAt = existingRefreshToken.AbsoluteExpiresAt;
-            }
-
-            dbContext.RefreshTokens.Add(new RefreshToken(
-                userId: user.Id,
-                tokenHash: sha256HasherService.GetHash(refreshToken),
-                createdAt: dateTimeService.UtcNow,
-                expiresAt: newExpiresAt,
-                absoluteExpiresAt: existingRefreshToken.AbsoluteExpiresAt));
-
-            existingRefreshToken.IsRevoked = true;
-            existingRefreshToken.RevokedAt = dateTimeService.UtcNow;
-
-            Console.WriteLine("-------------------------");
-            foreach (var t in dbContext.RefreshTokens)
-            {
-                Console.WriteLine($"TokenHash: {t.TokenHash} | CreatedAt: {t.CreatedAt} | RevokedAt: {t.RevokedAt}");
-            }
-
-            return Results.Ok(new
-            {
-                AccessToken = accessToken,
-                RefreshToken = refreshToken
-            });
-
         }
     }
 }

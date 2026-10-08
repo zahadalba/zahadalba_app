@@ -16,7 +16,7 @@ namespace zahadalba_backend.Features.Auth.SignUp
             SignUpRequestDto dto,
             IValidator<SignUpRequestDto> validator,
             IPasswordHasher<User> passwordHasher,
-            AppDbContext dbContext)
+            AppDbContext db)
         {
             var normalizedDto = dto with
             {
@@ -41,7 +41,7 @@ namespace zahadalba_backend.Features.Auth.SignUp
                     detail: "Отправлены некорректные данные");
             }
 
-            if (dbContext.Users.Exists(u => u.Email == normalizedDto.Email || u.Phone == normalizedDto.Phone))
+            if (db.Users.Any(u => u.Email == normalizedDto.Email || u.Phone == normalizedDto.Phone))
             {
                 return Results.Problem(
                     statusCode: StatusCodes.Status409Conflict,
@@ -61,9 +61,10 @@ namespace zahadalba_backend.Features.Auth.SignUp
             var passwordHash = passwordHasher.HashPassword(user, normalizedDto.Password);
             user.PasswordHash = passwordHash;
 
-            dbContext.Users.Add(user);
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
 
-            foreach (var u in dbContext.Users)
+            foreach (var u in db.Users)
             {
                 Console.WriteLine($"{u.Id} {u.FirstName} {u.LastName} {u.Age} {u.Email} {u.Phone}");
             }

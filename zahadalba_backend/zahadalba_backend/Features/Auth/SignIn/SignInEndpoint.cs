@@ -16,7 +16,7 @@ namespace zahadalba_backend.Features.Auth.SignIn
         private static async Task<IResult> Handle(
             SignInRequestDto dto,
             IDateTimeService dateTimeService,
-            AppDbContext dbContext,
+            AppDbContext db,
             ITokenService tokenService,
             ISha256HasherService sha256HasherService,
             IPasswordHasher<User> passwordHasher,
@@ -42,7 +42,7 @@ namespace zahadalba_backend.Features.Auth.SignIn
                     detail: "Отправлены некорректные данные");
             }
 
-            var user = dbContext.Users.FirstOrDefault(u => u.Email == normalizedDto.Email);
+            var user = db.Users.FirstOrDefault(u => u.Email == normalizedDto.Email);
             if (user is null)
             {
                 return Results.Problem(
@@ -68,12 +68,13 @@ namespace zahadalba_backend.Features.Auth.SignIn
             var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
             var refreshToken = tokenService.GenerateRefreshToken();
 
-            dbContext.RefreshTokens.Add(new RefreshToken(
+            db.RefreshTokens.Add(new RefreshToken(
                 userId: user.Id,
                 tokenHash: sha256HasherService.GetHash(refreshToken),
                 createdAt: dateTimeService.UtcNow,
                 expiresAt: dateTimeService.UtcNow.AddDays(7),
                 absoluteExpiresAt: dateTimeService.UtcNow.AddDays(30)));
+            await db.SaveChangesAsync();
 
             return Results.Ok(new
             {

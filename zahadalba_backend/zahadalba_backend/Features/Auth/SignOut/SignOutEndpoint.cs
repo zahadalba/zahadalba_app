@@ -10,20 +10,21 @@ namespace zahadalba_backend.Features.Auth.SignOut
             app.MapPost("/api/auth/sign-out", Handler);
         }
 
-        private static IResult Handler(
+        private static async Task<IResult> Handler(
             HttpContext context,
             IDateTimeService dateTimeService,
-            AppDbContext dbContext,
+            AppDbContext db,
             ISha256HasherService sha256HasherService)
         {
             var refreshTokenData = context.Request.Cookies["refreshToken"];
             if (!string.IsNullOrEmpty(refreshTokenData))
             {
-                var existingRefreshToken = dbContext.RefreshTokens.FirstOrDefault(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
+                var existingRefreshToken = db.RefreshTokens.FirstOrDefault(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
                 if (existingRefreshToken is not null)
                 {
                     existingRefreshToken.IsRevoked = true;
                     existingRefreshToken.RevokedAt = dateTimeService.UtcNow;
+                    await db.SaveChangesAsync();
                 }
             }
             return Results.Ok();

@@ -12,7 +12,7 @@ namespace zahadalba_backend.Features.Auth.GetMe
 
         private static IResult Handler(
             HttpContext context,
-            AppDbContext dbContext)
+            AppDbContext db)
         {
             var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId is null)
@@ -23,7 +23,7 @@ namespace zahadalba_backend.Features.Auth.GetMe
                     detail: "Не удалось получить ID пользователя");
             }
 
-            var user = dbContext.Users.FirstOrDefault(u => u.Id.ToString() == userId);
+            var user = db.Users.FirstOrDefault(u => u.Id.ToString() == userId);
             if (user is null)
             {
                 return Results.Problem(

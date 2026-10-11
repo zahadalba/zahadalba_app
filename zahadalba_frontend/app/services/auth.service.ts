@@ -21,6 +21,8 @@ export const useAuth = () => {
   };
 
   const getMe = async () => {
+    console.log("getMeClient");
+
     const headers = useRequestHeaders(["cookie"]);
     return await $fetch<GetMeResponseDto>("/api/auth/me", {
       method: "GET",

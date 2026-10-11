@@ -10,21 +10,9 @@ definePageMeta({
 
 const authStore = useAuthStore();
 
-const apiError = ref<ApiError>({
-    statusCode: undefined,
-    statusMessage: undefined,
-    message: undefined,
-});
+const { data } = useFetch("/api/auth/me");
 
-const { getMe, signOut } = useAuth();
-const { data: user, error } = useQuery<GetMeResponseDto, FetchError>({
-    key: ["auth", "me"],
-    query: getMe,
-});
-
-apiError.value.statusCode = error.value?.statusCode;
-apiError.value.statusMessage = error.value?.data.statusMessage;
-apiError.value.message = error.value?.data.message;
+const { signOut } = useAuth();
 
 const { mutate, isLoading } = useMutation({
     mutation: signOut,
@@ -44,8 +32,7 @@ const onSubmit = () => {
 
 <template>
     <h3>Профиль</h3>
-    <p>Привет, {{ user?.firstName }}!</p>
-    <p>ID: {{ user?.id }}</p>
+    <p>Привет, {{ authStore.user?.firstName }}!</p>
+    <p>ID: {{ authStore.user?.id }}</p>
     <button @click="onSubmit" :disabled="isLoading">Выйти</button>
-    <p>{{ error?.statusCode }} {{ error?.statusMessage }}</p>
 </template>

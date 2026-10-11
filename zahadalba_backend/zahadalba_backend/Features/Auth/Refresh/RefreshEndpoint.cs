@@ -19,6 +19,7 @@ namespace zahadalba_backend.Features.Auth.Refresh
             ISha256HasherService sha256HasherService,
             ITokenService tokenService)
         {
+            Console.WriteLine("refresh");
             var refreshTokenData = context.Request.Cookies["refreshToken"];
             if (string.IsNullOrEmpty(refreshTokenData))
             {
@@ -43,6 +44,9 @@ namespace zahadalba_backend.Features.Auth.Refresh
 
                 if (existingRefreshToken.IsRevoked)
                 {
+                    Console.WriteLine($"IsRevoked: {existingRefreshToken.IsRevoked}");
+                    Console.WriteLine($"RevokedAt: {existingRefreshToken.RevokedAt:O}");
+                    Console.WriteLine($"UtcNow: {dateTimeService.UtcNow:O}");
                     var timeSinceRevocation = dateTimeService.UtcNow - existingRefreshToken.RevokedAt;
                     if (timeSinceRevocation is not null && timeSinceRevocation.Value.TotalSeconds <= 10)
                     {
@@ -53,22 +57,12 @@ namespace zahadalba_backend.Features.Auth.Refresh
                         }
 
                         var retryAccessToken = tokenService.GenerateAccessToken(retryUser, dateTimeService);
-                        var retryRefreshToken = tokenService.GenerateRefreshToken();
-
-                        db.RefreshTokens.Add(new RefreshToken(
-                            userId: retryUser.Id,
-                            tokenHash: sha256HasherService.GetHash(retryRefreshToken),
-                            createdAt: dateTimeService.UtcNow,
-                            expiresAt: existingRefreshToken.ExpiresAt,
-                            absoluteExpiresAt: existingRefreshToken.AbsoluteExpiresAt));
-
-                        await db.SaveChangesAsync();
-                        await transaction.CommitAsync();
 
                         return Results.Ok(new
                         {
+                            Status = "Grace",
                             AccessToken = retryAccessToken,
-                            RefreshToken = retryRefreshToken
+                            RefreshToken = "",
                         });
                     }
 
@@ -121,6 +115,7 @@ namespace zahadalba_backend.Features.Auth.Refresh
 
                 return Results.Ok(new
                 {
+                    Status = "Refreshed",
                     AccessToken = accessToken,
                     RefreshToken = refreshToken
                 });

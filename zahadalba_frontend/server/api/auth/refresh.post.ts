@@ -1,3 +1,9 @@
-import { FetchError } from "ofetch";
+import { handleTokenRefresh, throwNitroError } from "~~/server/utils/auth";
 
-export default defineEventHandler(async (event) => {});
+export default defineEventHandler(async (event) => {
+  try {
+    await handleTokenRefresh(event);
+  } catch (error) {
+    throwNitroError(error, event);
+  }
+});

@@ -35,13 +35,6 @@ export default defineEventHandler(async (event) => {
       email: data.email,
     };
   } catch (error) {
-    if (error instanceof FetchError) {
-      throw createError({
-        statusCode: error.statusCode,
-        statusMessage: error.data.title,
-        message: error.data.detail,
-        data: error.data,
-      });
-    }
+    throwNitroError(error, event);
   }
 });

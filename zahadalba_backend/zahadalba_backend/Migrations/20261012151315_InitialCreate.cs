@@ -46,6 +46,16 @@ namespace zahadalba_backend.Migrations
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_AbsoluteExpiresAt",
+                table: "RefreshTokens",
+                column: "AbsoluteExpiresAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_ExpiresAt",
+                table: "RefreshTokens",
+                column: "ExpiresAt");
         }
 
         /// <inheritdoc />

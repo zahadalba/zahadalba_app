@@ -28,9 +28,7 @@ const { mutate, isLoading } = useMutation({
     mutation: signIn,
 
     onSuccess: async (data) => {
-        authStore.user = data;
-        authStore.isAuthenticated = true;
-
+        authStore.setUser(data);
         await navigateTo("/");
     },
 

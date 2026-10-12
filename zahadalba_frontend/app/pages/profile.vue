@@ -1,8 +1,5 @@
 <script setup lang="ts">
 import { useAuth } from '~/services/auth.service';
-import type { ApiError } from '~/types/apiError.type';
-import type { GetMeResponseDto } from '~/types/auth.type';
-import { FetchError } from "ofetch";
 
 definePageMeta({
     middleware: 'auth'
@@ -10,17 +7,13 @@ definePageMeta({
 
 const authStore = useAuthStore();
 
-const { data } = useFetch("/api/auth/me");
-
 const { signOut } = useAuth();
 
 const { mutate, isLoading } = useMutation({
     mutation: signOut,
 
     onSettled: async () => {
-        authStore.user = null;
-        authStore.isAuthenticated = false;
-
+        authStore.clearUser();
         await navigateTo("/");
     },
 });

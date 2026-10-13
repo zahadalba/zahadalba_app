@@ -27,7 +27,7 @@ namespace zahadalba_backend.Features.Auth
         new Claim(ClaimTypes.Email, user.Email),
     };
 
-            var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+            var symmetricSecurityKey = new SymmetricSecurityKey(Convert.FromBase64String(_jwtSettings.SecretKey));
             var jwtToken = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,

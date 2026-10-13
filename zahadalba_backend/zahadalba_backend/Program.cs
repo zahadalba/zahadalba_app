@@ -44,7 +44,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSettings.Audience,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
+            IssuerSigningKey = new SymmetricSecurityKey(Convert.FromBase64String(jwtSettings.SecretKey)),
         };
     });
 
@@ -79,24 +79,43 @@ builder.Services.AddScoped<ISha256HasherService, Sha256HasherService>();
 
 var app = builder.Build();
 
+
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (!db.Users.Any(u => u.Email == "admin@a.aa"))
-    {
-        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
+    var services = scope.ServiceProvider;
 
-        User testUser = new User()
+    var db = services.GetRequiredService<AppDbContext>();
+    var configuration = services.GetRequiredService<IConfiguration>();
+
+    var adminEmail = configuration["InitialAdmin:Email"];
+    var adminPassword = configuration["InitialAdmin:Password"];
+
+    if (string.IsNullOrWhiteSpace(adminEmail) ||
+        string.IsNullOrWhiteSpace(adminPassword))
+    {
+        throw new InvalidOperationException(
+            "Initial administrator credentials are not configured.");
+    }
+
+    if (!await db.Users.AnyAsync(u => u.Email == adminEmail))
+    {
+        var passwordHasher =
+            services.GetRequiredService<IPasswordHasher<User>>();
+
+        var adminUser = new User
         {
             FirstName = "Admin",
             LastName = "Admin",
             Age = 33,
-            Email = "admin@a.aa",
-            Phone = "88888888888"
+            Email = adminEmail,
+            Phone = "+78888888888",
+            Role = "Admin",
         };
-        testUser.PasswordHash = passwordHasher.HashPassword(testUser, "a");
 
-        db.Users.Add(testUser);
+        adminUser.PasswordHash =
+            passwordHasher.HashPassword(adminUser, adminPassword);
+
+        db.Users.Add(adminUser);
         await db.SaveChangesAsync();
     }
 }

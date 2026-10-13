@@ -1,25 +1,51 @@
-#####################################
-# OS / system files
-#####################################
+############################################
+# OS / SYSTEM
+############################################
 .DS_Store
 Thumbs.db
 desktop.ini
+$RECYCLE.BIN/
 
-#####################################
-# IDE - Visual Studio / Rider / VSCode
-#####################################
+############################################
+# IDE / EDITORS
+############################################
 .vs/
-.vscode/
-.fleet/
 .idea/
+.fleet/
+.vscode/
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
+*.swp
+*.swo
+*~
 
-#####################################
-# Logs
-#####################################
+############################################
+# ENVIRONMENT / SECRETS
+############################################
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# .NET User Secrets and local secret files
+secrets.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+
+# Private keys and certificates
+*.pfx
+*.p12
+*.key
+*.pem
+*.crt
+*.cer
+
+############################################
+# LOGS
+############################################
 *.log
 logs/
 npm-debug.log*
@@ -27,80 +53,84 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-#####################################
-# Environment variables
-#####################################
-.env
-.env.*
-!.env.example
+############################################
+# NODE.JS / NUXT
+############################################
+**/node_modules/
+**/.nuxt/
+**/.output/
+**/.data/
+**/.cache/
+**/.nitro/
+**/.temp/
+**/.vite/
+**/dist/
+**/coverage/
 
-#####################################
-# Node / Nuxt (CLIENT)
-#####################################
-zahadalba_client/node_modules/
-zahadalba_client/.nuxt/
-zahadalba_client/.output/
-zahadalba_client/.data/
-zahadalba_client/.cache/
-zahadalba_client/dist/
-zahadalba_client/.vite/
-zahadalba_client/.nitro/
-zahadalba_client/.temp/
+# Nuxt generated declarations
+**/nuxt.d.ts
+**/auto-imports.d.ts
+**/components.d.ts
 
-# Nuxt generated files
-**/.nuxt
-**/.output
+############################################
+# PACKAGE MANAGERS
+############################################
+# Keep the lockfile for the package manager actually used.
+# Do NOT ignore package-lock.json, pnpm-lock.yaml or yarn.lock.
 
-# Package manager
-**/node_modules
-pnpm-lock.yaml
-yarn.lock
-package-lock.json
-
-#####################################
-# ASP.NET Core (SERVER)
-#####################################
-zahadalba_server/bin/
-zahadalba_server/obj/
-zahadalba_server/wwwroot/lib/
-zahadalba_server/Properties/PublishProfiles/
-
-# EF Core
-**/Migrations/*Snapshot.cs
-**/Migrations/*.Designer.cs
-
-#####################################
-# Build outputs
-#####################################
-*.dll
-*.exe
-*.pdb
-*.cache
-*.dll.config
-
-#####################################
-# Publish
-#####################################
-publish/
+############################################
+# ASP.NET CORE / .NET
+############################################
+**/bin/
+**/obj/
+**/TestResults/
+**/artifacts/
 **/publish/
 
-#####################################
-# Coverage / test results
-#####################################
+# Local IDE / tooling
+*.rsuser
+*.sln.ide
+
+############################################
+# ENTITY FRAMEWORK CORE
+############################################
+# IMPORTANT:
+# Do NOT ignore Migrations, ModelSnapshot or Designer.cs files.
+# EF Core migrations are source code and must be committed.
+
+############################################
+# BUILD OUTPUTS
+############################################
+# Do not globally ignore DLL, EXE, PDB or CACHE extensions.
+# Ignore build output directories above instead.
+
+############################################
+# PUBLISH / DEPLOYMENT
+############################################
+# Local publish profiles can contain credentials.
+**/Properties/PublishProfiles/*.pubxml
+**/Properties/PublishProfiles/*.publishsettings
+
+############################################
+# TEST / COVERAGE
+############################################
 coverage/
-TestResults/
+**/TestResults/
 *.coverage
+*.coveragexml
 *.opencover.xml
 
-#####################################
-# Docker (если используешь)
-#####################################
+############################################
+# DOCKER LOCAL OVERRIDES
+############################################
 docker-compose.override.yml
-*.env.local
+docker-compose.*.override.yml
 
-#####################################
-# Misc
-#####################################
-*.swp
-*.swo
-*~
+############################################
+# TEMPORARY FILES
+############################################
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej

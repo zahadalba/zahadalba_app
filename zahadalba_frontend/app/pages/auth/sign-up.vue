@@ -106,6 +106,7 @@ const onSubmit = async () => {
         </div>
         <button type="submit" :disabled="isLoading">Регистрация</button>
     </form>
+    <p>Реальные данные не вводить!</p>
     <p>{{ apiError.statusCode }} {{ apiError.statusMessage }}</p>
 </template>
 

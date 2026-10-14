@@ -34,6 +34,8 @@ services:
         condition: service_healthy
       migrations:
         condition: service_completed_successfully
+    volumes:
+      - dataprotection_keys:/var/dpkeys
     networks:
       - app_network
 
@@ -83,3 +85,4 @@ networks:
 
 volumes:
   postgres_data:
+  dataprotection_keys:

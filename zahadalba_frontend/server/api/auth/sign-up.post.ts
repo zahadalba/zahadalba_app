@@ -1,10 +1,9 @@
-import { FetchError } from "ofetch";
-
 export default defineEventHandler(async (event) => {
   const body = await readBody(event);
-
+  const config = useRuntimeConfig(event);
   try {
-    await $fetch("http://localhost:7203/api/auth/sign-up", {
+    await $fetch("/api/auth/sign-up", {
+      baseURL: config.apiBaseUrl,
       method: "POST",
       body,
     });

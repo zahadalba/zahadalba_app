@@ -1,5 +1,6 @@
 ﻿using FluentValidation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
 
@@ -41,7 +42,7 @@ namespace zahadalba_backend.Features.Auth.SignUp
                     detail: "Отправлены некорректные данные");
             }
 
-            if (db.Users.Any(u => u.Email == normalizedDto.Email || u.Phone == normalizedDto.Phone))
+            if (await db.Users.AnyAsync(u => u.Email == normalizedDto.Email || u.Phone == normalizedDto.Phone))
             {
                 return Results.Problem(
                     statusCode: StatusCodes.Status409Conflict,
@@ -61,13 +62,8 @@ namespace zahadalba_backend.Features.Auth.SignUp
             var passwordHash = passwordHasher.HashPassword(user, normalizedDto.Password);
             user.PasswordHash = passwordHash;
 
-            db.Users.Add(user);
+            await db.Users.AddAsync(user);
             await db.SaveChangesAsync();
-
-            foreach (var u in db.Users)
-            {
-                Console.WriteLine($"{u.Id} {u.FirstName} {u.LastName} {u.Age} {u.Email} {u.Phone}");
-            }
 
             return Results.Created();
         }

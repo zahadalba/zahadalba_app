@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+RUN dotnet tool install --global dotnet-ef --version "10.*"
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+COPY . .
+
+RUN dotnet restore "zahadalba_backend.csproj"
+
+RUN dotnet ef migrations bundle --project "zahadalba_backend.csproj" --startup-project "zahadalba_backend.csproj" --configuration Release --target-runtime linux-x64 --output /out/migrate
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /out/migrate ./migrate
+
+RUN chmod +x ./migrate
+
+ENTRYPOINT ["./migrate"]

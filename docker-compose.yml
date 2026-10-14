@@ -1,0 +1,85 @@
+services:
+  frontend:
+    build:
+      context: ./zahadalba_frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NITRO_HOST: 0.0.0.0
+      NITRO_PORT: 3000
+      NUXT_API_BASE_URL: http://backend:8080
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - app_network
+
+  backend:
+    build:
+      context: ./zahadalba_backend/zahadalba_backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}
+      InitialAdmin__Email: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
+      InitialAdmin__Password: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      JwtSettings__SecretKey: ${SECRET_KEY:?SECRET_KEY is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - app_network
+
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_network
+
+  migrations:
+    build:
+      context: ./zahadalba_backend/zahadalba_backend
+      dockerfile: Dockerfile.migrations
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}
+      JwtSettings__SecretKey: ${SECRET_KEY:?SECRET_KEY is required}
+      InitialAdmin__Email: ${ADMIN_EMAIL:?ADMIN_EMAIL is required}
+      InitialAdmin__Password: ${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+    command:
+      - "--connection"
+      - "${DB_CONNECTION_STRING:?DB_CONNECTION_STRING is required}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

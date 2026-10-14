@@ -2,6 +2,7 @@ import type { H3Event } from "h3";
 import { FetchError } from "ofetch";
 
 export const handleTokenRefresh = async (event: H3Event) => {
+  const config = useRuntimeConfig(event);
   let accessToken = getCookie(event, "accessToken");
   let refreshToken = getCookie(event, "refreshToken");
 
@@ -16,7 +17,8 @@ export const handleTokenRefresh = async (event: H3Event) => {
     status: string;
     accessToken: string;
     refreshToken: string;
-  }>("http://localhost:7203/api/auth/refresh", {
+  }>("/api/auth/refresh", {
+    baseURL: config.apiBaseUrl,
     method: "POST",
     headers: {
       cookie: `refreshToken=${refreshToken}`,
@@ -65,7 +67,8 @@ export const throwNitroError = (error: unknown, event: H3Event) => {
   throw error;
 };
 
-export const fetchUserProfile = async (accessToken: string) => {
+export const fetchUserProfile = async (event: H3Event, accessToken: string) => {
+  const config = useRuntimeConfig(event);
   const data = await $fetch<{
     id: string;
     firstName: string;
@@ -73,7 +76,9 @@ export const fetchUserProfile = async (accessToken: string) => {
     age: number;
     email: string;
     phone: string;
-  }>("http://localhost:7203/api/auth/me", {
+    role: string;
+  }>("/api/auth/me", {
+    baseURL: config.apiBaseUrl,
     method: "GET",
     headers: {
       Authorization: `Bearer ${accessToken}`,

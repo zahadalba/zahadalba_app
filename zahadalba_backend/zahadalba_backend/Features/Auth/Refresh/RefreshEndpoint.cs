@@ -44,13 +44,10 @@ namespace zahadalba_backend.Features.Auth.Refresh
 
                 if (existingRefreshToken.IsRevoked)
                 {
-                    Console.WriteLine($"IsRevoked: {existingRefreshToken.IsRevoked}");
-                    Console.WriteLine($"RevokedAt: {existingRefreshToken.RevokedAt:O}");
-                    Console.WriteLine($"UtcNow: {dateTimeService.UtcNow:O}");
                     var timeSinceRevocation = dateTimeService.UtcNow - existingRefreshToken.RevokedAt;
                     if (timeSinceRevocation is not null && timeSinceRevocation.Value.TotalSeconds <= 10)
                     {
-                        var retryUser = db.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+                        var retryUser = await db.Users.FirstOrDefaultAsync(u => u.Id == existingRefreshToken.UserId);
                         if (retryUser is null)
                         {
                             return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
@@ -78,7 +75,7 @@ namespace zahadalba_backend.Features.Auth.Refresh
                     return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized: token reuse detected!");
                 }
 
-                var user = db.Users.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+                var user = await db.Users.FirstOrDefaultAsync(u => u.Id == existingRefreshToken.UserId);
                 if (user is null)
                 {
                     return Results.Problem(statusCode: StatusCodes.Status401Unauthorized, title: "Unauthorized");
@@ -93,7 +90,7 @@ namespace zahadalba_backend.Features.Auth.Refresh
                     newExpiresAt = existingRefreshToken.AbsoluteExpiresAt;
                 }
 
-                db.RefreshTokens.Add(new RefreshToken(
+                await db.RefreshTokens.AddAsync(new RefreshToken(
                     userId: user.Id,
                     tokenHash: sha256HasherService.GetHash(refreshToken),
                     createdAt: dateTimeService.UtcNow,
@@ -104,13 +101,6 @@ namespace zahadalba_backend.Features.Auth.Refresh
                 existingRefreshToken.RevokedAt = dateTimeService.UtcNow;
 
                 await db.SaveChangesAsync();
-
-                Console.WriteLine("-------------------------");
-                foreach (var t in db.RefreshTokens)
-                {
-                    Console.WriteLine($"TokenHash: {t.TokenHash} | CreatedAt: {t.CreatedAt} | RevokedAt: {t.RevokedAt}");
-                }
-
                 await transaction.CommitAsync();
 
                 return Results.Ok(new

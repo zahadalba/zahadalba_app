@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using zahadalba_backend.Data;
 
 namespace zahadalba_backend.Features.Auth.GetMe
@@ -10,7 +11,7 @@ namespace zahadalba_backend.Features.Auth.GetMe
             app.MapGet("/api/auth/me", Handler).RequireAuthorization();
         }
 
-        private static IResult Handler(
+        private static async Task<IResult> Handler(
             HttpContext context,
             AppDbContext db)
         {
@@ -23,7 +24,7 @@ namespace zahadalba_backend.Features.Auth.GetMe
                     detail: "Не удалось получить ID пользователя");
             }
 
-            var user = db.Users.FirstOrDefault(u => u.Id.ToString() == userId);
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Id.ToString() == userId);
             if (user is null)
             {
                 return Results.Problem(
@@ -40,6 +41,7 @@ namespace zahadalba_backend.Features.Auth.GetMe
                 user.Age,
                 user.Email,
                 user.Phone,
+                user.Role,
             });
         }
     }

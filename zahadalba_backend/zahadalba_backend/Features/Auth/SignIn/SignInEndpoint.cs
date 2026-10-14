@@ -3,6 +3,7 @@ using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
 using zahadalba_backend.Services;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace zahadalba_backend.Features.Auth.SignIn
 {
@@ -42,7 +43,7 @@ namespace zahadalba_backend.Features.Auth.SignIn
                     detail: "Отправлены некорректные данные");
             }
 
-            var user = db.Users.FirstOrDefault(u => u.Email == normalizedDto.Email);
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedDto.Email);
             if (user is null)
             {
                 return Results.Problem(
@@ -68,7 +69,7 @@ namespace zahadalba_backend.Features.Auth.SignIn
             var accessToken = tokenService.GenerateAccessToken(user, dateTimeService);
             var refreshToken = tokenService.GenerateRefreshToken();
 
-            db.RefreshTokens.Add(new RefreshToken(
+            await db.RefreshTokens.AddAsync(new RefreshToken(
                 userId: user.Id,
                 tokenHash: sha256HasherService.GetHash(refreshToken),
                 createdAt: dateTimeService.UtcNow,
@@ -84,6 +85,7 @@ namespace zahadalba_backend.Features.Auth.SignIn
                 user.Age,
                 user.Email,
                 user.Phone,
+                user.Role,
                 AccessToken = accessToken,
                 RefreshToken = refreshToken
             });

@@ -1,7 +1,9 @@
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig(event);
   const refreshToken = getCookie(event, "refreshToken");
   try {
-    await $fetch("http://localhost:7203/api/auth/sign-out", {
+    await $fetch("/api/auth/sign-out", {
+      baseURL: config.apiBaseUrl,
       method: "POST",
       headers: {
         cookie: `refreshToken=${refreshToken}`,

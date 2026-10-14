@@ -10,6 +10,7 @@ export interface SignInResponseDto {
   age: number;
   email: string;
   phone: string;
+  role: string;
 }
 
 export interface GetMeResponseDto {
@@ -19,6 +20,7 @@ export interface GetMeResponseDto {
   age: number;
   email: string;
   phone: string;
+  role: string;
 }
 
 export interface SignUpRequestDto {

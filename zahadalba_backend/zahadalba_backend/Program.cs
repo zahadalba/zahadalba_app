@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using zahadalba_backend.Configurations;
 using zahadalba_backend.Data;
 using zahadalba_backend.Data.Entities;
+using zahadalba_backend.Features.Admin.GetUsers;
 using zahadalba_backend.Features.Auth;
 using zahadalba_backend.Features.Auth.GetMe;
 using zahadalba_backend.Features.Auth.Refresh;
@@ -48,7 +49,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.RequireClaim(ClaimTypes.Role, "Admin");
+    });
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -130,5 +137,7 @@ app.MapSignInEndpoint();
 app.MapGetMeEndpoint();
 app.MapRefreshEndpoint();
 app.MapSignOutEndpoint();
+
+app.MapGetAdminUsersEndpoint();
 
 app.Run("http://localhost:7203");

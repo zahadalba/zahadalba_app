@@ -1,4 +1,5 @@
-﻿using zahadalba_backend.Data;
+﻿using Microsoft.EntityFrameworkCore;
+using zahadalba_backend.Data;
 using zahadalba_backend.Services;
 
 namespace zahadalba_backend.Features.Auth.SignOut
@@ -19,7 +20,7 @@ namespace zahadalba_backend.Features.Auth.SignOut
             var refreshTokenData = context.Request.Cookies["refreshToken"];
             if (!string.IsNullOrEmpty(refreshTokenData))
             {
-                var existingRefreshToken = db.RefreshTokens.FirstOrDefault(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
+                var existingRefreshToken = await db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == sha256HasherService.GetHash(refreshTokenData));
                 if (existingRefreshToken is not null)
                 {
                     existingRefreshToken.IsRevoked = true;

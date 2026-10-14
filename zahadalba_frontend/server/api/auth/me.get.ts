@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     if (accessToken) {
-      return await fetchUserProfile(accessToken);
+      return await fetchUserProfile(event, accessToken);
     }
   } catch (error) {
     if (
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
         accessToken = result?.accessToken;
         refreshToken = result?.refreshToken;
 
-        return await fetchUserProfile(accessToken);
+        return await fetchUserProfile(event, accessToken);
       } catch (error) {
         throwNitroError(error, event);
       }

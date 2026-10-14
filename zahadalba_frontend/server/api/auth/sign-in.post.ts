@@ -33,7 +33,12 @@ export default defineEventHandler(async (event) => {
 
     return {
       id: data.id,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      age: data.age,
       email: data.email,
+      phone: data.phone,
+      role: data.role,
     };
   } catch (error) {
     throwNitroError(error, event);

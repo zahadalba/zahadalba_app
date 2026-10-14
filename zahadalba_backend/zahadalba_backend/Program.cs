@@ -140,4 +140,4 @@ app.MapSignOutEndpoint();
 
 app.MapGetAdminUsersEndpoint();
 
-app.Run("http://localhost:7203");
+app.Run();
